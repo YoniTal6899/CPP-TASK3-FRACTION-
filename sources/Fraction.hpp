@@ -1,106 +1,112 @@
 #pragma once
 #include <iostream>
+#include <limits>
 using namespace std;
 
 namespace ariel
-{
+{   const int ELEF=1000;
+     const int MEA=100;  
+    const int MAX = numeric_limits<int>::max();
+     const int MIN = numeric_limits<int>::min(); 
     class Fraction
     {
         private:
-            int up;
+            int numerator;
             int down;
             void reduce(); // Reduce the fraction
 
         public:
-          Fraction(int a, int b)
+          Fraction(const int numerator, int denominator)
           {
-               if(b==0){__throw_invalid_argument("Divided by zero!");}
-               this->up=a;
-               this->down=b;
+               if(denominator==0){__throw_invalid_argument("Divided by zero!");}
+               this->numerator=numerator;
+               this->down=denominator;
                this->reduce(); // Reduce the fraction
           }
-          Fraction() // Default constauctor
+          Fraction() : numerator(1), down(1) // Default constauctor
+          {}
+
+          Fraction(float num) : numerator(int(num*ELEF)), down(ELEF) // Build Fraction object from float
           {
-               this->up=1;
-               this->down=1;
+               this->reduce();
           }
 
-          Fraction(float num) // Build Fraction object from float
+          int getNumerator() const 
           {
-               this->up=num*1000;
-               this->down=1000;
-               this->reduce();
+               return this->numerator;
+          }
+
+          int getDenominator() const 
+          {
+               return this->down;
           }
 
           friend Fraction operator+(const Fraction& self, const Fraction& other)
           {
-               int new_up= (self.up*other.down) + (self.down*other.up);
+               if ((self.numerator == MAX ^ self.down == MAX)!=0 || (self.numerator <= (MIN + MEA) && other.numerator <= (MIN + MEA))){throw overflow_error("overflow");}
+               int new_top= (self.numerator*other.down) + (self.down*other.numerator);
                int new_down= self.down*other.down;
-               Fraction ans(new_up,new_down);
+               Fraction ans(new_top,new_down);
                return ans;
           }
           friend Fraction operator-(const Fraction& self, const Fraction& other)
           {
-               int new_up= (self.up*other.down) - (self.down*other.up);
+               if ((self.numerator<= MIN + MEA && other.numerator <= MIN + MEA) || (self.numerator >= MAX - MEA && other.numerator <= MIN + MEA)){throw overflow_error("overflow");}
+               int new_top= (self.numerator*other.down) - (self.down*other.numerator);
                int new_down= self.down*other.down;
-               Fraction ans(new_up,new_down);
+               Fraction ans(new_top,new_down);
                return ans;
           }
           friend Fraction operator*(const Fraction& self, const Fraction& other)
           {
-               int new_up= self.up*other.up;
+               if ((self.numerator == MAX ^ self.down == MAX)!=0 || (other.numerator == MAX && other.down != MAX)){throw overflow_error("overflow");}
+               int new_top= self.numerator*other.numerator;
                int new_down= self.down*other.down;
-               Fraction ans(new_up,new_down);
+               Fraction ans(new_top,new_down);
                return ans;
           }
           friend Fraction operator/(const Fraction& self, const Fraction& other)
           {
-               if(other.up==0){__throw_invalid_argument("Divided by zero");}
-               Fraction oppsite(other.down,other.up);
-               return self*oppsite; 
+               if ((self.down == MAX && self.numerator < MAX - MEA) || (self.numerator == MAX && self.down != MAX)){throw overflow_error("overflow");}
+               if(other.numerator==0){__throw_runtime_error("Divided by zero");}
+               int new_top= self.numerator*other.down;
+               int new_down= self.down*other.numerator;
+               Fraction ans(new_top,new_down);
+               return ans;
           }
           friend bool operator==(const Fraction& self, const Fraction& other)
           {
-               if((self.up==other.up) && (self.down==other.down)){return true;}
-               return false;
+               return ((self.numerator==other.numerator) && (self.down==other.down));
           }
           friend bool operator<(const Fraction& self, const Fraction& other)
           {
                int common= self.down*other.down;
-               if((self.up*common/self.down)<(other.up*common*other.down)){return true;}
-               return false; 
+               return ((self.numerator*common/self.down)<(other.numerator*common/other.down));
           }
           friend bool operator>(const Fraction& self, const Fraction& other)
           {
-               //cout << "self: " + to_string(self.up) +" / " +to_string(self.down) <<endl;
-               //cout << "other: " + to_string(other.up) +" / " +to_string(other.down) <<endl;
                int common= self.down*other.down;
-               if((self.up*common/self.down)>(other.up*common*other.down)){return true;}
-               return false; 
+               return ((self.numerator*common/self.down)>(other.numerator*common/other.down));
           }
           friend bool operator>=(const Fraction& self, const Fraction& other)
           {
-               //cout << "self: " + to_string(self.up) +" / " +to_string(self.down) <<endl;
-               //cout << "other: " + to_string(other.up) +" / " +to_string(other.down) <<endl;
                int common= self.down*other.down;
-               if((self.up*common/self.down)<(other.up*common*other.down)){return false;}
-               return true; 
+               return !((self.numerator*common/self.down)<(other.numerator*common/other.down)); 
           }
           friend bool operator<=(const Fraction& self, const Fraction& other)
           {
                int common= self.down*other.down;
-               if((self.up*common/self.down)>(other.up*common*other.down)){return false;}
-               return true; 
+               return !((self.numerator*common/self.down)>(other.numerator*common/other.down));
           }
           Fraction operator++()
           {
-              this->up+=this->down;
+              this->numerator+=this->down;
               this->reduce();
               return *this;
           }
           Fraction operator--()
           {
-              this->up-=this->down;
+              this->numerator-=this->down;
               this->reduce();
               return *this;
           }
@@ -108,7 +114,7 @@ namespace ariel
           Fraction operator++(int)
           {
              Fraction curr(*this);
-              this->operator--();
+              this->operator++();
               this->reduce();               
               return curr;
           }
@@ -121,19 +127,20 @@ namespace ariel
               return curr;
           }
 
-        friend ostream& operator<<(ostream& os, const Fraction& frac)
+        friend ostream& operator<<(ostream& ost, const Fraction& frac)
           {
-               os << frac.up << "/" << frac.down;
-               return os;
+               ost << frac.numerator << "/" << frac.down;
+               return ost;
           }
 
-        friend istream& operator>>(istream& is, Fraction& frac)
+        friend istream& operator>>(istream& ist, Fraction& frac)
           {
-               int a, b;
-               char c;
-               is >> a >> c >> b;
-               frac = Fraction(a, b);
-               return is;
+               int numerator=0;
+               int denominator =0;
+               ist >> numerator >> denominator;
+               if(denominator==0){__throw_runtime_error("Invalid args!");}
+               frac = Fraction(numerator, denominator);
+               return ist;
           }
 
           friend Fraction operator+(const Fraction& self, float num)
@@ -159,33 +166,75 @@ namespace ariel
           friend bool operator==(const Fraction& self, float num)
           {
                Fraction tmp(num);
-               if(tmp==self){return true;}
-               return false;
+              return self==tmp;
           }
           friend bool operator<(const Fraction& self, float num)
           {
                Fraction tmp(num);
-               if(tmp<self){return true;}
-               return false; 
+              return self<tmp;
           }
           friend bool operator>(const Fraction& self, float num)
           {
                Fraction tmp(num);
-               if(tmp>self){return true;}
-               return false;
+              return self>tmp;
           }
           friend bool operator>=(const Fraction& self, float num)
           {
                Fraction tmp(num);
-               if(tmp>=self){return true;}
-               return false; 
+               return self>=tmp;
           }
           friend bool operator<=(const Fraction& self, float num)
           {
                Fraction tmp(num);
-               if(tmp<=self){return true;}
-               return false;
+              return self<=tmp;
           }
+
+          friend Fraction operator+(float num, const Fraction& self)
+          {
+               Fraction tmp(num);
+               return self+tmp;
+          }
+          friend Fraction operator-(float num, const Fraction& self)
+          {
+               Fraction tmp(num);
+               return tmp-self;
+          }
+          friend Fraction operator*(float num, const Fraction& self)
+          {
+               Fraction tmp(num);
+               return self*tmp;
+          }
+          friend Fraction operator/(float num, const Fraction& self)
+          {
+               Fraction tmp(num);
+               return tmp/self;
+          }
+          friend bool operator==(float num, const Fraction& self)
+          {
+               Fraction tmp(num);
+              return tmp==self;
+          }
+          friend bool operator<(float num, const Fraction& self)
+          {
+               Fraction tmp(num);
+               return tmp<self;
+          }
+          friend bool operator>(float num, const Fraction& self)
+          {
+               Fraction tmp(num);
+               return tmp>self;
+          }
+          friend bool operator>=(float num, const Fraction& self)
+          {
+               Fraction tmp(num);
+               return tmp>=self; 
+          }
+          friend bool operator<=(float num, const Fraction& self)
+          {
+               Fraction tmp(num);
+               return tmp<=self;
+          }
+          
 
     };
 }
